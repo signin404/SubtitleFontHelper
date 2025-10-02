@@ -5,12 +5,11 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-    workflow_dispatch:
+  workflow_dispatch:
 
 env:
   SOLUTION_FILE_PATH: .
   BUILD_CONFIGURATION: Release
-
 
 permissions:
   contents: read
@@ -20,12 +19,12 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4 # 建议更新到 v4
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2 # 建议更新到 v2
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4 # 建议更新到 v4
       id: cache
       with:
         path: vcpkg_binary_cache\
@@ -61,7 +60,7 @@ jobs:
         .\copyFiles.ps1
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4 # <-- 主要修改点
       with:
         name: ReleaseBuild
         path: ReleaseBuild\
