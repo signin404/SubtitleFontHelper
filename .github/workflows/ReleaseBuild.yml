@@ -5,11 +5,11 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 env:
   SOLUTION_FILE_PATH: .
   BUILD_CONFIGURATION: Release
-
 
 permissions:
   contents: read
@@ -19,12 +19,12 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cache
       with:
         path: vcpkg_binary_cache\
@@ -37,21 +37,25 @@ jobs:
         New-Item -Type Directory -Force "$env:VCPKG_DEFAULT_BINARY_CACHE"
         echo "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE" >> $env:GITHUB_ENV
 
-    - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
-
     - name: Vcpkg integrate
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: vcpkg integrate install
 
+    # --- 修改开始 ---
+    # 使用 MSBuild 还原 NuGet 包，这比 'nuget restore' 更可靠
+    - name: Restore packages
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild ${{env.SOLUTION_FILE_PATH}} /t:Restore
+
+    # 在构建命令中添加 /p:VcpkgEnableManifest=true
     - name: Build x86
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x86 /p:VcpkgEnableManifest=true ${{env.SOLUTION_FILE_PATH}}
       
     - name: Build x64
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 /p:VcpkgEnableManifest=true ${{env.SOLUTION_FILE_PATH}}
+    # --- 修改结束 ---
 
     - name: Copy files
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -60,7 +64,7 @@ jobs:
         .\copyFiles.ps1
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ReleaseBuild
         path: ReleaseBuild\
