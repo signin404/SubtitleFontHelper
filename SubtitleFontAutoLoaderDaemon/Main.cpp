@@ -24,6 +24,7 @@
 namespace sfh
 {
 	bool g_debugOutputEnabled = false;
+	bool g_hideTrayIcon = false;
 
 	class SingleInstanceLock
 	{
@@ -154,7 +155,10 @@ namespace sfh
 			auto lruCachePath = selfPath / L"lruCache.txt";
 			auto cfg = ConfigFile::ReadFromFile(configPath);
 
-			m_service->m_systemTray = std::make_unique<SystemTray>(this);
+			if (!g_hideTrayIcon)
+			{
+				m_service->m_systemTray = std::make_unique<SystemTray>(this);
+			}
 			std::vector<std::unique_ptr<FontDatabase>> dbs;
 			for (auto& indexFile : cfg->m_indexFile)
 			{
@@ -175,7 +179,10 @@ namespace sfh
 				monitorProcess.emplace_back(process.m_name);
 			}
 			m_service->m_processMonitor->SetMonitorList(std::move(monitorProcess));
-			m_service->m_systemTray->NotifyFinishLoad();
+			if (m_service->m_systemTray)
+			{
+				m_service->m_systemTray->NotifyFinishLoad();
+			}
 		}
 
 		void OnException(std::exception_ptr exception)
@@ -203,6 +210,10 @@ namespace sfh
 			if (_wcsicmp(cmdline[i].c_str(), L"-debug") == 0)
 			{
 				g_debugOutputEnabled = true;
+			}
+			if (_wcsicmp(cmdline[i].c_str(), L"-hide") == 0)
+			{
+				g_hideTrayIcon = true;
 			}
 		}
 	}
