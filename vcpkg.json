@@ -6,5 +6,6 @@
     "protobuf",
 	"freetype",
 	"wil"
-  ]
+  ],
+  "builtin-baseline": "5f7a1b67908c280b7b6483f2a4f55b9a3652d2e1"
 }
