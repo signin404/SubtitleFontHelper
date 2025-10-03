@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "dependencies": [
     "protobuf",
-	"freetype",
-	"wil"
+    "freetype",
+    "wil"
   ],
-  "builtin-baseline": "5f7a1b67908c280b7b6483f2a4f55b9a3652d2e1"
+  "builtin-baseline": "dd6c59869e5b95a406307698539d8ae31b704689"
 }
