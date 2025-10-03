@@ -25,7 +25,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-        fetch-depth: 0
+        fetch-depth: 0 # <-- 这是解决问题的关键，请确保它存在
 
     # 2. 设置 MSBuild 和 NuGet 工具
     - name: Add MSBuild to PATH
