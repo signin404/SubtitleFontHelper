@@ -10,7 +10,6 @@ on:
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   SOLUTION_FILE_PATH: SubtitleFontHelper.sln
-  SOLUTION_FILE_PATH: SubtitleFontHelper.sln # 直接指定解决方案文件
   BUILD_CONFIGURATION: Release
 
 permissions:
@@ -45,11 +44,6 @@ jobs:
         }
         echo "--- Verification complete ---"
       shell: pwsh
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        # 我们需要 vcpkg 子模块
-        submodules: 'recursive'
 
     # 3. 设置 MSBuild 和 NuGet 工具
     - name: Add MSBuild to PATH
@@ -84,30 +78,11 @@ jobs:
       run: vcpkg integrate install
 
     # 9. 构建项目
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        # 指定 vcpkg 的安装目录，并缓存它
-        vcpkgDirectory: ${{ runner.temp }}/vcpkg
-        runVcpkgInstall: true
-        vcpkgJsonGlob: '**/vcpkg.json'
-
-    # --- 关键修复步骤 ---
-    # 1. 首先，还原 NuGet 包。这会下载 .NET 依赖项，比如 WIL。
-    - name: Restore NuGet packages
-      run: nuget restore ${{ env.SOLUTION_FILE_PATH }}
-
-    # 2. 然后，运行 vcpkg 集成。这会确保 MSBuild 知道如何找到 vcpkg 的库。
-    - name: Vcpkg integrate install
-      run: vcpkg integrate install
-
-    # 3. 最后，进行构建。
     - name: Build x86
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
       
     - name: Build x64
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
-    # --- 修复结束 ---
 
     # 10. 复制构建产物
     - name: Copy files
