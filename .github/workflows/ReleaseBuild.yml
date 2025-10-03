@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 env:
-  SOLUTION_FILE_PATH: SubtitleFontHelper.sln # 直接指定解决方案文件
+  SOLUTION_FILE_PATH: SubtitleFontHelper.sln
   BUILD_CONFIGURATION: Release
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg # 定义 vcpkg 的路径
 
 permissions:
   contents: read
@@ -19,9 +20,10 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repository and submodules
       uses: actions/checkout@v4
       with:
+        # 这一步至关重要，它会把 vcpkg 子模块也克隆下来
         submodules: 'recursive'
 
     - name: Add MSBuild to PATH
@@ -30,19 +32,26 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: ${{ runner.temp }}/vcpkg
-        runVcpkgInstall: true
-        vcpkgJsonGlob: '**/vcpkg.json'
+    # --- 新的 vcpkg 设置步骤 ---
+    - name: Bootstrap vcpkg
+      run: |
+        cd ${{ env.VCPKG_ROOT }}
+        ./bootstrap-vcpkg.bat
+      shell: cmd
 
     - name: Restore NuGet packages
       run: nuget restore ${{ env.SOLUTION_FILE_PATH }}
 
-    - name: Vcpkg integrate install
-      run: vcpkg integrate install
+    - name: Install vcpkg dependencies
+      run: |
+        vcpkg install --triplet x86-windows-static-md
+        vcpkg install --triplet x64-windows-static-md
+      working-directory: ${{ github.workspace }} # 在项目根目录运行，它会自动找到 vcpkg.json
 
+    - name: Vcpkg integrate install
+      run: ${{ env.VCPKG_ROOT }}/vcpkg integrate install
+
+    # --- 构建步骤保持不变 ---
     - name: Build x86
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
       
@@ -54,7 +63,7 @@ jobs:
       run: .\copyFiles.ps1
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4 # <-- 使用 v4 版本
+      uses: actions/upload-artifact@v4
       with:
         name: ReleaseBuild
         path: ReleaseBuild\
