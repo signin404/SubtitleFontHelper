@@ -78,6 +78,3 @@ jobs:
         name: ReleaseBuild
         path: ReleaseBuild\```
 
-4.  按正确的顺序安装了所有依赖（NuGet 和 vcpkg）。
-
-在您更新工作流程文件后，这次的构建应该就能完全成功了。
