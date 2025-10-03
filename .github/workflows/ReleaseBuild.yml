@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  # 定义 vcpkg 的根目录
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   SOLUTION_FILE_PATH: SubtitleFontHelper.sln
   BUILD_CONFIGURATION: Release
@@ -21,21 +20,22 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    # 1. 检出您的项目代码，但明确告诉它不要处理子模块
-    - name: Checkout repository (without submodules)
+    # 1. 检出主仓库，但明确告诉它不要处理子模块
+    - name: Checkout repository (no submodules)
       uses: actions/checkout@v4
       with:
-        submodules: 'false' # <-- 关键改变：禁用自动子模块克隆
+        submodules: false # <-- 禁用自动子模块处理
+        fetch-depth: 1    # 主仓库只需要浅克隆
 
-    # 2. (绝对修复) 手动、完整地克隆 vcpkg 仓库
-    - name: Manually Clone vcpkg (Full History)
+    # 2. (决定性修复) 手动、显式地初始化和更新 vcpkg 子模块
+    - name: Manually Initialize and Update vcpkg Submodule
       run: |
-        echo "--- Manually cloning vcpkg with full history ---"
-        # 如果目录存在先删除，确保干净
-        if (Test-Path "${{ env.VCPKG_ROOT }}") { Remove-Item -Recurse -Force "${{ env.VCPKG_ROOT }}" }
-        # 执行完整克隆
-        git clone https://github.com/microsoft/vcpkg.git "${{ env.VCPKG_ROOT }}"
-        echo "--- Clone complete ---"
+        echo "--- Initializing vcpkg submodule ---"
+        git submodule init vcpkg
+        echo "--- Updating vcpkg submodule (fetching full history) ---"
+        # --depth 2147483647 是 Git 中获取完整历史的明确方式
+        git submodule update --init --depth 2147483647 vcpkg
+        echo "--- vcpkg submodule ready ---"
       shell: pwsh
 
     # 3. 设置 MSBuild 和 NuGet 工具
