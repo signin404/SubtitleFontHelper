@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  SOLUTION_FILE_PATH: .
+  SOLUTION_FILE_PATH: SubtitleFontHelper.sln # 直接指定解决方案文件
   BUILD_CONFIGURATION: Release
 
 permissions:
@@ -19,48 +19,49 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4 # 建议更新到 v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # 我们需要 vcpkg 子模块
+        submodules: 'recursive'
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2 # 建议更新到 v2
+      uses: microsoft/setup-msbuild@v2
 
-    - uses: actions/cache@v4 # 建议更新到 v4
-      id: cache
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
       with:
-        path: vcpkg_binary_cache\
-        key: ${{ runner.os }}-${{ env.BUILD_CONFIGURATION }}-binarycache-${{ hashFiles('vcpkg.json') }}
+        # 指定 vcpkg 的安装目录，并缓存它
+        vcpkgDirectory: ${{ runner.temp }}/vcpkg
+        runVcpkgInstall: true
+        vcpkgJsonGlob: '**/vcpkg.json'
 
-    - name: Create vcpkg binary cache directory
-      shell: pwsh
-      run: |
-        $env:VCPKG_DEFAULT_BINARY_CACHE="$env:GITHUB_WORKSPACE\vcpkg_binary_cache"
-        New-Item -Type Directory -Force "$env:VCPKG_DEFAULT_BINARY_CACHE"
-        echo "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE" >> $env:GITHUB_ENV
-
+    # --- 关键修复步骤 ---
+    # 1. 首先，还原 NuGet 包。这会下载 .NET 依赖项，比如 WIL。
     - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+      run: nuget restore ${{ env.SOLUTION_FILE_PATH }}
 
-    - name: Vcpkg integrate
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+    # 2. 然后，运行 vcpkg 集成。这会确保 MSBuild 知道如何找到 vcpkg 的库。
+    - name: Vcpkg integrate install
       run: vcpkg integrate install
 
+    # 3. 最后，进行构建。
     - name: Build x86
-      working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
       
     - name: Build x64
-      working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+    # --- 修复结束 ---
 
     - name: Copy files
-      working-directory: ${{env.GITHUB_WORKSPACE}}
       shell: pwsh
-      run: |
-        .\copyFiles.ps1
+      run: .\copyFiles.ps1
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4 # <-- 主要修改点
+      uses: actions/upload-artifact@v4
       with:
         name: ReleaseBuild
         path: ReleaseBuild\
